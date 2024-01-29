@@ -1,7 +1,9 @@
 <?php
 session_start();
 $_SESSION['randomMap'] = rand(1, 2);
-
+if (!isset($_SESSION['error'])) {
+    $_SESSION['error'] = ['mur' => '', 'map' => '', 'win' => "C'est gagné !!!"];
+}
 if ($_SESSION['randomMap'] === 1) {
     if (!isset($_SESSION["map"])) {
         $_SESSION["map"] = [
@@ -11,13 +13,7 @@ if ($_SESSION['randomMap'] === 1) {
             [0, 1, 1, 1, 0],
             [0, 0, 0, 0, 0]
         ];
-        $_SESSON['fogMap'] = [
-            [4, 4, 4, 4, 4],
-            [4, 4, 4, 4, 4],
-            [4, 4, 4, 4, 4],
-            [4, 4, 4, 4, 4],
-            [4, 4, 4, 4, 4],
-        ];
+        $_SESSION["playerPos"] = [0, 0];
     }
 } else {
     if (!isset($_SESSION["map"])) {
@@ -33,24 +29,11 @@ if ($_SESSION['randomMap'] === 1) {
             [1, 1, 0, 0],
             [2, 0, 0, 1]
         ];
-        $_SESSON['fogMap'] = [
-            [4, 4, 4, 4],
-            [4, 4, 4, 4],
-            [4, 4, 4, 4],
-            [4, 4, 4, 4],
-            [4, 4, 4, 4],
-            [4, 4, 4, 4],
-            [4, 4, 4, 4],
-            [4, 4, 4, 4],
-            [4, 4, 4, 4],
-            [4, 4, 4, 4],
-        ];
+        $_SESSION["playerPos"] = [0, 0];
     }
 }
-
 define("SHIFTRIGHTANDDOWN", +1);
 define("SHIFTLEFTANDUP", -1);
-
 function displayMap($map)
 {
     foreach ($map as $value) {
@@ -81,26 +64,97 @@ function shift($map, $shiftRD, $shiftLU)
 {
     for ($i = 0; $i < count($map); $i++) {
         for ($j = 0; $j < count($map[$i]); $j++) {
-            if ($shiftRD != 0 && ($j + $shiftRD) >= 0 && ($j + $shiftRD) < count($map[$i])) {
-                if ($map[$i][$j] === 3 && $map[$i][$j + $shiftRD] === 0) {
-                    $map[$i][$j] = 0;
-                    $map[$i][$j + $shiftRD] = 3;
-                    return $map;
+            if ($shiftRD != 0) {
+                if (($j + $shiftRD) >= 0 && ($j + $shiftRD) < count($map[$i])) {
+                    if ($map[$i][$j] === 3) {
+                        if ($map[$i][$j + $shiftRD] === 0) {
+                            $map[$i][$j] = 0;
+                            $map[$i][$j + $shiftRD] = 3;
+                            $_SESSION["playerPos"] = [$i, $j + $shiftRD];
+                            $_SESSION['error']['mur'] = "";
+                            $_SESSION['error']['map'] = "";
+                            return $map;
+                        }
+                        if ($map[$i][$j + $shiftRD] === 1) {
+                            $_SESSION['error']['map'] = "";
+                            $_SESSION['error']['mur'] = "Attention il y a un mur !";
+                        }
+                    }
+                } else {
+                    $_SESSION['error']['mur'] = "";
+                    $_SESSION['error']['map'] = "Attention il n'y a pas de chemin par ici !";
                 }
             }
-            if ($shiftLU != 0 && ($i + $shiftLU) >= 0 && ($i + $shiftLU) < count($map)) {
-                if ($map[$i][$j] === 3 && $map[$i + $shiftLU][$j] === 0) {
-                    $map[$i][$j] = 0;
-                    $map[$i + $shiftLU][$j] = 3;
-                    return $map;
+            if ($shiftLU != 0) {
+                if (($i + $shiftLU) >= 0 && ($i + $shiftLU) < count($map)) {
+                    if ($map[$i][$j] === 3) {
+                        if ($map[$i + $shiftLU][$j] === 0) {
+                            $map[$i][$j] = 0;
+                            $map[$i + $shiftLU][$j] = 3;
+                            $_SESSION["playerPos"] = [$i + $shiftLU, $j];
+                            $_SESSION['error']['mur'] = "";
+                            $_SESSION['error']['map'] = "";
+                            return $map;
+                        }
+                        if ($map[$i + $shiftLU][$j] === 1) {
+                            $_SESSION['error']['map'] = "";
+                            $_SESSION['error']['mur'] = "Attention il y a un mur !";
+                        }
+                    }
                 }
             }
+        }
+        if (($i + $shiftLU) < 0 || ($i + $shiftLU) > count($map)) {
+            $_SESSION['error']['mur'] = "";
+            $_SESSION['error']['map'] = "Attention il n'y a pas de chemin par ici !";
         }
     }
     return $map;
 }
 ;
-
+function fogMap()
+{
+    $fogMap = $_SESSION["map"];
+    $pos = $_SESSION["playerPos"];
+    for ($i = 0; $i < count($fogMap); $i++) {
+        for ($j = 0; $j < count($fogMap[$i]); $j++) {
+            if (
+                !(($i == $pos[0] && $j == $pos[1])
+                    || ($i == $pos[0] && $j == $pos[1] - 1)
+                    || ($i == $pos[0] && $j == $pos[1] + 1)
+                    || ($i == $pos[0] - 1 && $j == $pos[1])
+                    || ($i == $pos[0] + 1 && $j == $pos[1])
+                )
+            ) {
+                $fogMap[$i][$j] = 4;
+            }
+        }
+    }
+    return $fogMap;
+}
+function win()
+{
+    $map = $_SESSION["map"];
+    $pos = $_SESSION["playerPos"];
+    if (
+        ($pos[1] + 1 < count($map[$pos[0]]) && $map[$pos[0]][$pos[1] + 1] === 2)
+        || ($pos[1] - 1 >= 0 && $map[$pos[0]][$pos[1] - 1] === 2)
+        || ($pos[0] + 1 < count($map) && $map[$pos[0] + 1][$pos[1]] === 2)
+        || ($pos[0] - 1 >= 0 && $map[$pos[0] - 1][$pos[1]] === 2)
+    ) {
+        echo $_SESSION['error']['win'];
+    }
+}
+function sentence()
+{
+    if ($_SESSION['error']['mur'] != "") {
+        echo $_SESSION['error']['mur'];
+    }
+    if ($_SESSION['error']['map'] != "") {
+        echo $_SESSION['error']['map'];
+    }
+    win();
+}
 
 if (isset($_POST["right"])) {
     $_SESSION["map"] = shift($_SESSION["map"], SHIFTRIGHTANDDOWN, 0);
@@ -118,8 +172,11 @@ if (isset($_POST["down"])) {
     $_SESSION["map"] = shift($_SESSION["map"], 0, SHIFTRIGHTANDDOWN);
 }
 ;
+if(isset($_POST["reset"])){
+    session_destroy();
+    header("Refresh:0");
+}
 ?>
-
 <!DOCTYPE html>
 <html lang="fr">
 
@@ -138,8 +195,13 @@ if (isset($_POST["down"])) {
         <div class="gameContainer">
             <div class="labyrinthe">
                 <?php
-                displayMap($_SESSION["map"]);
+                displayMap(fogMap());
                 ?>
+                <div class="sentenceContainer">
+                    <p id="sentence">
+                        <?php sentence() ?>
+                    </p>
+                </div>
             </div>
             <div class="buttonContainer">
                 <form method="POST">
@@ -161,8 +223,11 @@ if (isset($_POST["down"])) {
                     <button type="submit"> <img src="./assets/images/bas.png" width="50" alt=""></button>
                 </form>
             </div>
-            <div class="sentence">
-                <p></p>
+            <div>
+                <form method="POST">
+                    <input type="hidden" name="reset" value="reset">
+                    <button class="resetButton" type="submit">Recommencer</button>
+                </form>
             </div>
         </div>
     </main>
