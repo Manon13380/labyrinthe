@@ -1,6 +1,9 @@
 <?php
 session_start();
 $_SESSION['randomMap'] = rand(1, 2);
+$_SESSION['randoLine'] = rand(3,6);
+$_SESSION['randCell'] = rand(3,10);
+
 if (!isset($_SESSION['error'])) {
     $_SESSION['error'] = ['mur' => '', 'map' => '', 'win' => "C'est gagné !!!"];
 }
@@ -34,6 +37,8 @@ if ($_SESSION['randomMap'] === 1) {
 }
 define("SHIFTRIGHTANDDOWN", +1);
 define("SHIFTLEFTANDUP", -1);
+
+
 function displayMap($map)
 {
     foreach ($map as $value) {
@@ -80,9 +85,6 @@ function shift($map, $shiftRD, $shiftLU)
                             $_SESSION['error']['mur'] = "Attention il y a un mur !";
                         }
                     }
-                } else {
-                    $_SESSION['error']['mur'] = "";
-                    $_SESSION['error']['map'] = "Attention il n'y a pas de chemin par ici !";
                 }
             }
             if ($shiftLU != 0) {
