@@ -1,8 +1,9 @@
 <?php
 session_start();
-$_SESSION['randomMap'] = rand(1, 2);
-$_SESSION['randoLine'] = rand(3,6);
-$_SESSION['randCell'] = rand(3,10);
+$_SESSION['randomMap'] = rand(1, 3);
+$_SESSION['randoLine'] = rand(3, 6);
+$_SESSION['randCell'] = rand(3, 10);
+$_SESSION['randomNuts'] = [rand(2, ($_SESSION['randoLine'] - 1)), rand(2, ($_SESSION['randCell'] - 1))];
 
 if (!isset($_SESSION['error'])) {
     $_SESSION['error'] = ['mur' => '', 'map' => '', 'win' => "C'est gagné !!!"];
@@ -18,7 +19,7 @@ if ($_SESSION['randomMap'] === 1) {
         ];
         $_SESSION["playerPos"] = [0, 0];
     }
-} else {
+} elseif ($_SESSION['randomMap'] === 2) {
     if (!isset($_SESSION["map"])) {
         $_SESSION["map"] = [
             [3, 0, 0, 0],
@@ -34,9 +35,83 @@ if ($_SESSION['randomMap'] === 1) {
         ];
         $_SESSION["playerPos"] = [0, 0];
     }
+} else {
+    if (!isset($_SESSION["map"])) {
+        $_SESSION["playerPos"] = [0, 0];
+        $_SESSION["map"] = path(randomMap());
+    }
 }
 define("SHIFTRIGHTANDDOWN", +1);
 define("SHIFTLEFTANDUP", -1);
+
+function randomMap()
+{
+    $randomNuts = $_SESSION['randomNuts'];
+    $map = array();
+    for ($i = 0; $i < $_SESSION['randoLine']; $i++) {
+        $map[$i] = array();
+        for ($j = 0; $j < $_SESSION['randCell']; $j++) {
+            if ($i == 0 && $j == 0) {
+                $map[$i][$j] = 3;
+
+            } elseif ($i == $randomNuts[0] && $j == $randomNuts[1]) {
+                $map[$i][$j] = 2;
+            } else {
+                $map[$i][$j] = 1;
+            }
+        }
+    }
+    return $map;
+}
+
+function path($map, $pos = [0, 0])
+{
+    $cell = rand(1, 4);
+
+    if ($pos[1] + 1 < count($map[$pos[0]])) {
+        if ($map[$pos[0]][$pos[1] + 1] === 2) {
+            $map[0][0] = 3;
+            $map[$pos[0]][$pos[1]] = 0;
+            return $map;
+        }
+    }
+    if ($pos[1] - 1 >= 0) {
+        if ($map[$pos[0]][$pos[1] - 1] === 2) {
+            $map[0][0] = 3;
+            $map[$pos[0]][$pos[1]] = 0;
+            return $map;
+        }
+    }
+    if ($pos[0] + 1 < count($map)) {
+        if ($map[$pos[0] + 1][$pos[1]] === 2) {
+            $map[0][0] = 3;
+            $map[$pos[0]][$pos[1]] = 0;
+            return $map;
+        }
+    }
+    if ($pos[0] - 1 >= 0) {
+        if ($map[$pos[0] - 1][$pos[1]] === 2) {
+            $map[0][0] = 3;
+            $map[$pos[0]][$pos[1]] = 0;
+            return $map;
+        }
+    }
+    $map[$pos[0]][$pos[1]] = 0;
+    switch ($cell) {
+        case '1':
+            $pos[0] = max(0, $pos[0] - 1);
+            break;
+        case '2':
+            $pos[1] = min($pos[1] + 1, (count($map[$pos[0]]) - 1));
+            break;
+        case '3':
+            $pos[0] = min($pos[0] + 1, (count($map) - 1));
+            break;
+        default:
+            $pos[1] = max(0, $pos[1] - 1);
+    }
+    return path($map, $pos);
+}
 
 
 function displayMap($map)
@@ -106,7 +181,7 @@ function shift($map, $shiftRD, $shiftLU)
                 }
             }
         }
-        if (($i + $shiftLU) < 0 || ($i + $shiftLU) > count($map)) {
+        if (($i + $shiftLU) < 0 || ($i + $shiftLU) >= count($map) || ($j + $shiftRD) < 0 || ($j + $shiftRD) >= count($map[$i])) {
             $_SESSION['error']['mur'] = "";
             $_SESSION['error']['map'] = "Attention il n'y a pas de chemin par ici !";
         }
@@ -158,23 +233,23 @@ function sentence()
     win();
 }
 
-if (isset($_POST["right"])) {
-    $_SESSION["map"] = shift($_SESSION["map"], SHIFTRIGHTANDDOWN, 0);
+if (isset($_POST["direction"])) {
+    switch ($_POST["direction"]) {
+        case 'right':
+            $_SESSION["map"] = shift($_SESSION["map"], SHIFTRIGHTANDDOWN, 0);
+            break;
+        case 'left':
+            $_SESSION["map"] = shift($_SESSION["map"], SHIFTLEFTANDUP, 0);
+            break;
+        case 'up':
+            $_SESSION["map"] = shift($_SESSION["map"], 0, SHIFTLEFTANDUP);
+            break;
+        case 'down':
+            $_SESSION["map"] = shift($_SESSION["map"], 0, SHIFTRIGHTANDDOWN);
+            break;
+    }
 }
-;
-if (isset($_POST["left"])) {
-    $_SESSION["map"] = shift($_SESSION["map"], SHIFTLEFTANDUP, 0);
-}
-;
-if (isset($_POST["up"])) {
-    $_SESSION["map"] = shift($_SESSION["map"], 0, SHIFTLEFTANDUP);
-}
-;
-if (isset($_POST["down"])) {
-    $_SESSION["map"] = shift($_SESSION["map"], 0, SHIFTRIGHTANDDOWN);
-}
-;
-if(isset($_POST["reset"])){
+if (isset($_POST["reset"])) {
     session_destroy();
     header("Refresh:0");
 }
@@ -205,30 +280,24 @@ if(isset($_POST["reset"])){
                     </p>
                 </div>
             </div>
-            <div class="buttonContainer">
-                <form method="POST">
-                    <input type="hidden" name="up" value="haut">
-                    <button type="submit"> <img src="./assets/images/haut.png" width="50" alt=""></button>
-                </form>
-                <div class="buttonGD">
-                    <form method="POST">
-                        <input type="hidden" name="left" value="gauche">
-                        <button type="submit"> <img src="./assets/images/gauche.png" width="50" alt=""></button>
-                    </form>
-                    <form method="POST">
-                        <input type="hidden" name="right" value="droite">
-                        <button type="submit"> <img src="./assets/images/droite.png" width="50" alt=""></button>
-                    </form>
+            <form method="POST">
+                <div class="buttonContainer">
+                    <button type="submit" name="direction" value="up"> <img src="./assets/images/haut.png" width="50"
+                            alt=""></button>
+                    <div class="buttonGD">
+                        <button type="submit" name="direction" value="left"> <img src="./assets/images/gauche.png"
+                                width="50" alt=""></button>
+
+                        <button type="submit" name="direction" value="right"> <img src="./assets/images/droite.png"
+                                width="50" alt=""></button>
+                    </div>
+                    <button type="submit" name="direction" value="down"> <img src="./assets/images/bas.png" width="50"
+                            alt=""></button>
                 </div>
-                <form method="POST">
-                    <input type="hidden" name="down" value="bas">
-                    <button type="submit"> <img src="./assets/images/bas.png" width="50" alt=""></button>
-                </form>
-            </div>
+            </form>
             <div>
                 <form method="POST">
-                    <input type="hidden" name="reset" value="reset">
-                    <button class="resetButton" type="submit">Recommencer</button>
+                    <button class="resetButton" name="reset" value="reset" type="submit">Recommencer</button>
                 </form>
             </div>
         </div>

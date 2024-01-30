@@ -50,7 +50,7 @@ h1 {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 50px;
+    gap: 30px;
 }
 
 .labyrinthe {
@@ -73,7 +73,8 @@ h1 {
     color: white;
     margin: 0;
     text-align: center;
-
+    width:401px;
+    height:29px;
 }
 
 .resetButton {
